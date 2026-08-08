@@ -1,0 +1,43 @@
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  default: none
+  enable:
+    - bodyclose
+    - contextcheck
+    - errcheck
+    - errorlint
+    - exhaustive
+    - gocognit
+    - gocyclo
+    - gosec
+    - govet
+    - ineffassign
+    - nilerr
+    - nilnil
+    - rowserrcheck
+    - sloglint
+    - sqlclosecheck
+    - staticcheck
+    - testifylint
+    - unused
+  settings:
+    gocognit:
+      min-complexity: 25
+    gocyclo:
+      min-complexity: 15
+    exhaustive:
+      default-signifies-exhaustive: false
+    sloglint:
+      attr-only: true
+      no-global: all
+      static-msg: true
+
+formatters:
+  enable:
+    - gofumpt
+    - goimports

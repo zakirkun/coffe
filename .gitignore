@@ -1,0 +1,10 @@
+coffe
+coffe.exe
+*.db
+*.db-shm
+*.db-wal
+coverage.out
+.env
+bin/
+dist/
+.omo/

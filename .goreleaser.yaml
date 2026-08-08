@@ -1,0 +1,70 @@
+version: 2
+
+project_name: coffe
+
+builds:
+  - id: package
+    main: ./cmd/coffe
+    binary: coffe
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    flags: [-trimpath]
+    ldflags:
+      - >-
+        -s -w
+        -X coffe/internal/version.Version={{ .Version }}
+        -X coffe/internal/version.Commit={{ .Commit }}
+        -X coffe/internal/version.Date={{ .CommitDate }}
+  - id: update
+    main: ./cmd/coffe
+    binary: coffe
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    flags: [-trimpath]
+    ldflags:
+      - >-
+        -s -w
+        -X coffe/internal/version.Version={{ .Version }}
+        -X coffe/internal/version.Commit={{ .Commit }}
+        -X coffe/internal/version.Date={{ .CommitDate }}
+
+archives:
+  - id: packages
+    ids: [package]
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    name_template: "coffe_{{ .Tag }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - README.md
+      - DESIGN.md
+      - coffe.example.yaml
+      - coffe.swarm.example.yaml
+  - id: updater-binaries
+    ids: [update]
+    formats: [binary]
+    name_template: "coffe_update_{{ .Tag }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: checksums.txt
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+
+release:
+  prerelease: auto

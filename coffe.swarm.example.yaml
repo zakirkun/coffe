@@ -1,0 +1,5 @@
+version: 1
+deploy:
+  mode: swarm
+  compose_file: stack.yml
+  stack_name: payments

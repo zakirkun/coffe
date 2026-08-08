@@ -1,0 +1,18 @@
+version: "3"
+
+tasks:
+  fmt:
+    cmds:
+      - gofumpt -w .
+      - goimports -w .
+  test:
+    cmds:
+      - go test -race -shuffle=on -count=1 ./...
+  build:
+    cmds:
+      - go build ./cmd/coffe
+  release:snapshot:
+    cmds:
+      - goreleaser release --snapshot --clean
+  ci:
+    deps: [test, build]
