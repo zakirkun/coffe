@@ -1,0 +1,210 @@
+.panel {
+  min-inline-size: 0;
+  overflow: hidden;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+}
+
+.panel--recessed {
+  background: var(--sidebar);
+}
+
+.panel--approval {
+  border-inline-start: var(--space-1) solid var(--focus);
+}
+
+.panel__header {
+  display: flex;
+  min-block-size: 48px;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border-block-end: 1px solid var(--border);
+}
+
+.panel__body {
+  min-inline-size: 0;
+  padding: var(--space-4);
+}
+
+.action-cluster,
+.status-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-inline-size: 72px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  font: var(--font-label);
+  transition:
+    background-color 120ms ease-out,
+    border-color 120ms ease-out,
+    transform 120ms ease-out;
+}
+
+.button:hover:not(:disabled) {
+  border-color: var(--focus);
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.button:disabled {
+  color: var(--muted);
+  opacity: 0.64;
+}
+
+.button--primary {
+  background: var(--focus);
+  border-color: var(--focus);
+  color: var(--focus-contrast);
+}
+
+.button--destructive {
+  color: var(--error);
+  border-color: var(--error);
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 24px;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  color: var(--muted);
+  font: var(--font-label);
+  text-transform: capitalize;
+}
+
+.status--success {
+  background: var(--success-soft);
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.status--warning {
+  background: var(--warning-soft);
+  border-color: var(--warning);
+  color: var(--warning);
+}
+
+.status--error {
+  background: var(--error-soft);
+  border-color: var(--error);
+  color: var(--error);
+}
+
+.empty-state,
+.loading-state {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  padding: var(--space-6);
+  color: var(--muted);
+  text-align: center;
+}
+
+.empty-state strong {
+  color: var(--text);
+  font: var(--font-section);
+}
+
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.inline-error {
+  padding: var(--space-2) var(--space-3);
+  background: var(--error-soft);
+  border-inline-start: var(--space-1) solid var(--error);
+  color: var(--error);
+}
+
+.nav-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  inline-size: 100%;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-control);
+  color: var(--muted);
+  text-align: start;
+  transition:
+    background-color 120ms ease-out,
+    color 120ms ease-out;
+}
+
+.nav-item:hover {
+  background: var(--overlay);
+  color: var(--text);
+}
+
+.nav-item--active {
+  background: var(--focus-soft);
+  color: var(--text);
+}
+
+.nav-item--active::before {
+  position: absolute;
+  inset-block: var(--space-2);
+  inset-inline-start: 0;
+  inline-size: var(--space-1);
+  background: var(--focus);
+  border-radius: var(--radius-control);
+  content: "";
+}
+
+.nav-item__count {
+  font: var(--font-technical);
+}
+
+.table-scroll {
+  max-inline-size: 100%;
+  overflow-x: auto;
+}
+
+table {
+  inline-size: 100%;
+  min-inline-size: var(--table-min-size);
+  border-collapse: collapse;
+  text-align: start;
+}
+
+th,
+td {
+  min-block-size: var(--target-size);
+  padding: var(--space-2);
+  border-block-end: 1px solid var(--border);
+  text-align: start;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+th {
+  color: var(--muted);
+  font: var(--font-label);
+}
+
+tbody tr:last-child td {
+  border-block-end: 0;
+}

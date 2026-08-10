@@ -70,7 +70,10 @@ type fixedSecretReader struct{}
 
 func (fixedSecretReader) Get(context.Context, string) (string, error) { return "password", nil }
 
-type fixedGitTool struct{}
+type fixedGitTool struct {
+	cancel     context.CancelFunc
+	executions int
+}
 
 func (fixedGitTool) Status(context.Context, domain.Project) (domain.GitStatus, error) {
 	return domain.GitStatus{Branch: "main"}, nil
@@ -86,7 +89,11 @@ func (fixedGitTool) Render(operation domain.GitOperation) string {
 	return "git " + string(operation.Kind())
 }
 
-func (fixedGitTool) Execute(context.Context, domain.Project, domain.GitOperation) (string, error) {
+func (g *fixedGitTool) Execute(context.Context, domain.Project, domain.GitOperation) (string, error) {
+	g.executions++
+	if g.cancel != nil {
+		g.cancel()
+	}
 	return "git completed", nil
 }
 

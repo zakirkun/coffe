@@ -1,0 +1,21 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "coffe-desktop",
+  "outputfilename": "coffe-desktop",
+  "build:dir": "build",
+  "build:tags": "wailsapp",
+  "frontend:dir": "frontend",
+  "frontend:install": "bun install --frozen-lockfile",
+  "frontend:build": "bun run build",
+  "frontend:dev:install": "bun install",
+  "frontend:dev:watcher": "bun run dev",
+  "frontend:dev:serverUrl": "auto",
+  "wailsjsdir": "frontend",
+  "info": {
+    "companyName": "Coffe",
+    "productName": "Coffe Desktop",
+    "productVersion": "0.1.0",
+    "copyright": "Copyright 2026 Coffe",
+    "comments": "Local-first deployment control plane"
+  }
+}

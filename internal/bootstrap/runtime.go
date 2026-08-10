@@ -6,6 +6,7 @@ import (
 	"coffe/internal/config"
 	"coffe/internal/dbtool"
 	"coffe/internal/deploy"
+	"coffe/internal/domain"
 	"coffe/internal/gittool"
 	"coffe/internal/pluginexec"
 	"coffe/internal/secrets"
@@ -15,6 +16,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"os"
 	"path/filepath"
 	"time"
@@ -64,12 +66,21 @@ func Open(ctx context.Context, options Options, logger *slog.Logger) (*Runtime, 
 	if err != nil {
 		return nil, errors.Join(err, store.Close())
 	}
-	fallback, err := buildFallbackPlanner(ctx, options, keyring)
+	providers, err := store.ListAIProviders(ctx)
 	if err != nil {
 		return nil, errors.Join(err, store.Close())
 	}
+	fallback, saveFallback, err := configuredFallbackProvider(options, providers, realClock{}.Now())
+	if err != nil {
+		return nil, errors.Join(err, store.Close())
+	}
+	if saveFallback {
+		if err := store.SaveAIProvider(ctx, fallback); err != nil {
+			return nil, errors.Join(err, store.Close())
+		}
+	}
 	router := ai.NewRouter(ai.RouterDependencies{
-		Store: store, Secrets: keyring, IDs: uuidSource{}, Clock: realClock{}, Fallback: fallback.planner,
+		Store: store, Secrets: keyring, IDs: uuidSource{}, Clock: realClock{},
 	})
 	workerClient := worker.NewClient(worker.ClientConfig{})
 	remoteExecutor := worker.NewHybridExecutor(worker.HybridDependencies{
@@ -115,31 +126,63 @@ func (r *Runtime) Close(parent context.Context) error {
 	return errors.Join(r.App.Shutdown(ctx), r.store.Close())
 }
 
-type fallbackPlanner struct{ planner *ai.OpenAIPlanner }
+const (
+	configuredFallbackID   domain.AIProviderID = "configured-fallback"
+	configuredFallbackName                     = "coffe-internal-fallback"
+)
 
-func buildFallbackPlanner(
-	ctx context.Context,
+func configuredFallbackProvider(
 	options Options,
-	keyring *secrets.Keyring,
-) (fallbackPlanner, error) {
-	if options.AIModel == "" {
-		return fallbackPlanner{}, nil
-	}
-	apiKey := ""
-	if options.AISecretName != "" {
-		var err error
-		apiKey, err = keyring.Get(ctx, options.AISecretName)
-		if err != nil && !errors.Is(err, secrets.ErrNotFound) {
-			return fallbackPlanner{}, err
+	providers []domain.AIProvider,
+	createdAt time.Time,
+) (domain.AIProvider, bool, error) {
+	names := make(map[string]struct{}, len(providers))
+	var stored domain.AIProvider
+	var found bool
+	for _, provider := range providers {
+		names[provider.Name().String()] = struct{}{}
+		if provider.ID() == configuredFallbackID {
+			stored = provider
+			found = true
 		}
 	}
-	planner, err := ai.NewOpenAIPlanner(ai.OpenAIConfig{
-		BaseURL: options.AIBaseURL, Model: options.AIModel, APIKey: apiKey, Timeout: 45 * time.Second,
+	if found && options.AIModel == "" {
+		disabled, err := domain.NewAIProvider(domain.AIProviderValues{
+			ID: stored.ID(), Name: stored.Name(), Kind: stored.Kind(), BaseURL: stored.BaseURL(),
+			Model: stored.Model(), SecretName: stored.SecretName(), Priority: stored.Priority(),
+			Enabled: false, CreatedAt: stored.CreatedAt(),
+		})
+		return disabled, true, err
+	}
+	if options.AIModel == "" {
+		return domain.AIProvider{}, false, nil
+	}
+	name := stored.Name()
+	if !found {
+		rawName := configuredFallbackName
+		for suffix := 2; ; suffix++ {
+			if _, occupied := names[rawName]; !occupied {
+				break
+			}
+			rawName = fmt.Sprintf("%s-%d", configuredFallbackName, suffix)
+		}
+		var err error
+		name, err = domain.NewName(rawName)
+		if err != nil {
+			return domain.AIProvider{}, false, err
+		}
+	} else {
+		createdAt = stored.CreatedAt()
+	}
+	provider, err := domain.NewAIProvider(domain.AIProviderValues{
+		ID: configuredFallbackID, Name: name, Kind: domain.AIProviderOpenAI,
+		BaseURL: options.AIBaseURL, Model: options.AIModel, SecretName: options.AISecretName,
+		Priority: math.MaxInt, Enabled: true, CreatedAt: createdAt,
 	})
 	if err != nil {
-		return fallbackPlanner{}, err
+		return domain.AIProvider{}, false, err
 	}
-	return fallbackPlanner{planner: planner}, nil
+	return provider, true, nil
 }
 
 type realClock struct{}

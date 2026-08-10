@@ -20,6 +20,9 @@ type (
 	gitDiffOutput struct {
 		Diff string `json:"diff"`
 	}
+	gitBranchesOutput struct {
+		Branches []string `json:"branches"`
+	}
 )
 
 type gitPreviewInput struct {
@@ -52,6 +55,9 @@ func registerGitTools(server *mcp.Server, app Application) {
 		Name: "git_status", Description: "Read branch and working-tree status for one project",
 	}, gitStatusHandler(app))
 	mcp.AddTool(server, &mcp.Tool{
+		Name: "git_branches", Description: "List local branches for one project",
+	}, gitBranchesHandler(app))
+	mcp.AddTool(server, &mcp.Tool{
 		Name: "git_diff", Description: "Read a capped unstaged diff for one project",
 	}, gitDiffHandler(app))
 	mcp.AddTool(server, &mcp.Tool{
@@ -60,6 +66,20 @@ func registerGitTools(server *mcp.Server, app Application) {
 	mcp.AddTool(server, &mcp.Tool{
 		Name: "list_git_operations", Description: "List recent Git operation approvals and outcomes",
 	}, listGitOperationsHandler(app))
+}
+
+func gitBranchesHandler(app Application) mcp.ToolHandlerFor[gitProjectInput, gitBranchesOutput] {
+	return func(
+		ctx context.Context,
+		_ *mcp.CallToolRequest,
+		input gitProjectInput,
+	) (*mcp.CallToolResult, gitBranchesOutput, error) {
+		branches, err := app.GitBranches(ctx, input.ProjectID)
+		if err != nil {
+			return nil, gitBranchesOutput{}, fmt.Errorf("git branches: %w", err)
+		}
+		return nil, gitBranchesOutput{Branches: branches}, nil
+	}
 }
 
 func gitStatusHandler(app Application) mcp.ToolHandlerFor[gitProjectInput, gitStatusOutput] {

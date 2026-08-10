@@ -47,6 +47,11 @@ func (a *App) startExecution(
 	if project.ID() != plan.ProjectID() {
 		return domain.ActionPlan{}, domain.Target{}, domain.Workflow{}, fmt.Errorf("plan project: %w", ErrInvalidInput)
 	}
+	if plan.Kind() == domain.PlanSwarmDeploy {
+		if err := a.policyAllowsSwarm(ctx); err != nil {
+			return domain.ActionPlan{}, domain.Target{}, domain.Workflow{}, err
+		}
+	}
 	running, err := plan.Start()
 	if err != nil {
 		return domain.ActionPlan{}, domain.Target{}, domain.Workflow{}, err
@@ -55,7 +60,11 @@ func (a *App) startExecution(
 		return domain.ActionPlan{}, domain.Target{}, domain.Workflow{}, fmt.Errorf("save running plan: %w", err)
 	}
 	if err := a.appendEvent(ctx, id, domain.EventPlanStarted, "deployment started"); err != nil {
-		return domain.ActionPlan{}, domain.Target{}, domain.Workflow{}, err
+		rollbackErr := a.repository.SavePlan(context.WithoutCancel(ctx), plan)
+		if rollbackErr != nil {
+			rollbackErr = fmt.Errorf("restore approved plan: %w", rollbackErr)
+		}
+		return domain.ActionPlan{}, domain.Target{}, domain.Workflow{}, errors.Join(err, rollbackErr)
 	}
 	return running, target, workflow, nil
 }

@@ -1,6 +1,6 @@
 # Coffe
 
-Coffe is a local-first deployment control plane for a single developer. It previews an allowlisted deployment plan, requires explicit approval, executes it over SSH, and exposes the same workflow through a TUI, HTTP API, and MCP.
+Coffe is a local-first deployment control plane for a single developer. It previews an allowlisted deployment plan, requires explicit approval, executes it over SSH, and exposes operator workflows through a Wails desktop app plus headless CLI, HTTP, and MCP adapters.
 
 ## v0.1 Scope
 
@@ -10,7 +10,7 @@ Coffe is a local-first deployment control plane for a single developer. It previ
 - SSH, `git pull --ff-only`, and Docker Compose deployment
 - OpenAI-compatible prompt classification
 - Mandatory preview and approval before mutation
-- Dashboard TUI, HTTP API, and MCP over one application core
+- Native Wails dashboard, headless CLI, HTTP API, and MCP over one application core
 - Durable cancellation, retry, recovery, health checks, and rollback previews
 - Docker Swarm stack deployment plus node/service inspection
 - Local coding-agent lifecycle for OpenCode, Claude, Codex, Gemini, and Aider
@@ -26,11 +26,22 @@ Coffe is a local-first deployment control plane for a single developer. It previ
 - SHA-256-pinned JSON-stdio plugins with declared method allowlists
 - Cross-platform CI, legacy migration coverage, worker/plugin integration tests, and RC snapshots
 
-Desktop packaging, multi-user authentication, arbitrary shell execution, database mutation, and Swarm node mutation remain out of scope.
+Multi-user authentication, arbitrary shell execution, database mutation, and Swarm node mutation remain out of scope.
 
 ## Getting Started
 
 Requires Go 1.24.2 or newer. Go's automatic toolchain download can satisfy this when `GOTOOLCHAIN=auto`.
+
+The desktop app also requires Bun 1.3.14+ and the native Wails prerequisites for the host OS. Start it in development mode or create a packaged native build:
+
+```sh
+go run github.com/wailsapp/wails/v2/cmd/wails@v2.12.0 dev -dir desktop
+go run github.com/wailsapp/wails/v2/cmd/wails@v2.12.0 build -clean -dir desktop
+```
+
+The desktop handles project and target registration, deployment approvals, agents, databases, Git, AI providers, policy, workers, plugins, secrets, backups, updates, and audit export. `serve`, `mcp`, and `worker serve` remain headless protocol modes.
+
+Set `COFFE_DB` to an absolute path to launch the desktop against an isolated or non-default workspace database.
 
 Register a repository that contains `coffe.yaml`, then add an SSH target:
 
@@ -44,13 +55,11 @@ go run ./cmd/coffe target add \
   --path /srv/payments
 ```
 
-Store a hosted-provider key in the OS keyring when needed. Ollama, vLLM, and LM Studio endpoints may not require one.
+Store a hosted-provider key in the OS keyring when needed. Ollama, vLLM, and LM Studio endpoints may not require one. The same operation is available from the desktop Maintenance screen.
 
 ```sh
 go run ./cmd/coffe secret set openai_api_key
-go run ./cmd/coffe --ai-url http://127.0.0.1:11434/v1 --ai-model MODEL_NAME tui
-# Hosted provider:
-go run ./cmd/coffe --ai-url PROVIDER_URL --ai-model MODEL_NAME --ai-secret openai_api_key tui
+go run ./cmd/coffe ai add --name local --kind ollama --url http://127.0.0.1:11434/v1 --model MODEL_NAME
 ```
 
 Run the loopback HTTP API and MCP endpoint, or MCP directly over stdio:
@@ -60,19 +69,7 @@ go run ./cmd/coffe serve
 go run ./cmd/coffe mcp
 ```
 
-The TUI prompt accepts these command families:
-
-```text
-deploy payments to office
-git status
-git pull
-git approve OPERATION_ID
-git execute OPERATION_ID
-agent opencode inspect the failing tests
-sql SELECT name FROM metrics
-```
-
-The SQL form uses the first registered database. Register one locally with:
+Register a read-only database from the desktop Databases screen or from the headless CLI:
 
 ```sh
 go run ./cmd/coffe database add-sqlite --name analytics --path /absolute/path/analytics.db
@@ -185,6 +182,8 @@ coffe plugin invoke PLUGIN_ID --method incident.lookup --input '{"id":"INC-1"}'
 ```sh
 go test -race -shuffle=on -count=1 ./...
 go build ./cmd/coffe
+cd desktop/frontend && bun install --frozen-lockfile && bun test && bun run check && bun run build
+go run github.com/wailsapp/wails/v2/cmd/wails@v2.12.0 build -clean -dir desktop
 ```
 
 See `coffe.example.yaml` for repository-owned deployment configuration.

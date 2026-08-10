@@ -38,7 +38,7 @@ func NewRoot(ctx context.Context) (*cobra.Command, error) {
 	root.PersistentFlags().StringVar(&state.options.AIModel, "ai-model", options.AIModel, "OpenAI-compatible model name")
 	root.PersistentFlags().StringVar(&state.options.AISecretName, "ai-secret", options.AISecretName, "API key name in OS keyring")
 	root.AddCommand(
-		newTUICommand(state), newServeCommand(state), newMCPCommand(state),
+		newServeCommand(state), newMCPCommand(state),
 		newProjectCommand(state), newTargetCommand(state), newDatabaseCommand(state), newSecretCommand(),
 		newGitCommand(state),
 		newAICommand(state),

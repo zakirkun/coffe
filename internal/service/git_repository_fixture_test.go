@@ -8,7 +8,10 @@ import (
 	"time"
 )
 
-func (r *memoryRepository) SaveGitOperation(_ context.Context, operation domain.GitOperation) error {
+func (r *memoryRepository) SaveGitOperation(ctx context.Context, operation domain.GitOperation) error {
+	if r.rejectCanceledGitPersistence && ctx.Err() != nil {
+		return ctx.Err()
+	}
 	r.gitOperations[operation.ID()] = operation
 	return nil
 }
@@ -36,11 +39,19 @@ func (r *memoryRepository) ListGitOperations(_ context.Context, limit int) ([]do
 }
 
 func (r *memoryRepository) AppendGitEvent(
-	_ context.Context,
+	ctx context.Context,
 	id domain.GitOperationID,
 	message string,
 	occurredAt time.Time,
 ) error {
+	if r.rejectCanceledGitPersistence && ctx.Err() != nil {
+		return ctx.Err()
+	}
+	if r.nextGitEventErr != nil {
+		err := r.nextGitEventErr
+		r.nextGitEventErr = nil
+		return err
+	}
 	event, err := domain.NewGitEvent(id, message, occurredAt)
 	if err != nil {
 		return err

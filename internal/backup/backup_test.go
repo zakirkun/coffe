@@ -39,6 +39,10 @@ func Test_ExportImport_roundtrips_encrypted_SQLite_snapshot(t *testing.T) {
 		DatabasePath: destination, InputPath: archive, Passphrase: passphrase,
 	})
 	requireNoError(t, "Import", err)
+	err = backup.Import(context.Background(), backup.ImportOptions{
+		DatabasePath: destination, InputPath: archive, Passphrase: passphrase,
+	})
+	requireNoError(t, "Import(repeated)", err)
 
 	// Then
 	encrypted, err := os.ReadFile(archive) //nolint:gosec // archive is created inside t.TempDir.
@@ -60,7 +64,7 @@ func Test_ExportImport_roundtrips_encrypted_SQLite_snapshot(t *testing.T) {
 	}
 	preserved, err := filepath.Glob(destination + ".before-import-*")
 	requireNoError(t, "Glob", err)
-	if len(preserved) != 1 {
+	if len(preserved) != 2 {
 		t.Fatalf("preserved databases = %v", preserved)
 	}
 }

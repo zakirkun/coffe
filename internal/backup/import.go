@@ -7,8 +7,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strconv"
-	"time"
 
 	"filippo.io/age"
 )
@@ -89,7 +87,6 @@ func decryptToTemp(inputPath, databasePath, passphrase string) (path string, err
 }
 
 func replaceDatabase(ctx context.Context, databasePath, temporary string) error {
-	backupPath := databasePath + ".before-import-" + strconv.FormatInt(time.Now().Unix(), 10)
 	exists := true
 	if _, err := os.Stat(databasePath); errors.Is(err, os.ErrNotExist) {
 		exists = false
@@ -100,14 +97,26 @@ func replaceDatabase(ctx context.Context, databasePath, temporary string) error 
 		if err := checkpoint(ctx, databasePath); err != nil {
 			return err
 		}
+		backup, err := os.CreateTemp(filepath.Dir(databasePath), filepath.Base(databasePath)+".before-import-*")
+		if err != nil {
+			return fmt.Errorf("create predecessor path: %w", err)
+		}
+		backupPath := backup.Name()
+		if err := backup.Close(); err != nil {
+			return errors.Join(fmt.Errorf("close predecessor path: %w", err), removeIfExists(backupPath))
+		}
+		if err := os.Remove(backupPath); err != nil {
+			return fmt.Errorf("prepare predecessor path: %w", err)
+		}
 		if err := os.Rename(databasePath, backupPath); err != nil {
 			return fmt.Errorf("preserve current database: %w", err)
 		}
-	}
-	if err := os.Rename(temporary, databasePath); err != nil {
-		if exists {
+		if err := os.Rename(temporary, databasePath); err != nil {
 			return errors.Join(err, os.Rename(backupPath, databasePath))
 		}
+		return errors.Join(removeIfExists(databasePath+"-wal"), removeIfExists(databasePath+"-shm"))
+	}
+	if err := os.Rename(temporary, databasePath); err != nil {
 		return fmt.Errorf("install imported database: %w", err)
 	}
 	return errors.Join(removeIfExists(databasePath+"-wal"), removeIfExists(databasePath+"-shm"))

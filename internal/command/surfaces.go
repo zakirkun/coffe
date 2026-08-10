@@ -4,23 +4,11 @@ import (
 	"coffe/internal/bootstrap"
 	"coffe/internal/httpapi"
 	"coffe/internal/mcpserver"
-	"coffe/internal/tui"
 	"net/http"
 	"time"
 
 	"github.com/spf13/cobra"
 )
-
-func newTUICommand(state *rootState) *cobra.Command {
-	return &cobra.Command{
-		Use: "tui", Short: "Open the deployment dashboard",
-		RunE: func(_ *cobra.Command, _ []string) error {
-			return withRuntime(state, func(runtime *bootstrap.Runtime) error {
-				return tui.Run(state.ctx, runtime.App)
-			})
-		},
-	}
-}
 
 func newServeCommand(state *rootState) *cobra.Command {
 	command := &cobra.Command{

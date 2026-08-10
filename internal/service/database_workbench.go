@@ -119,7 +119,7 @@ func (a *App) recordQueryHistory(ctx context.Context, input queryRecordInput) er
 	if err != nil {
 		return fmt.Errorf("new query history id: %w", err)
 	}
-	statement := strings.Join(strings.Fields(input.query), " ")
+	statement := strings.Join(strings.Fields(redactSQLLiterals(input.query)), " ")
 	if utf8.RuneCountInString(statement) > 4096 {
 		statement = string([]rune(statement)[:4096])
 	}

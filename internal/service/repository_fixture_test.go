@@ -1,31 +1,38 @@
 package service_test
 
 import (
+	"cmp"
 	"coffe/internal/domain"
 	"coffe/internal/service"
 	"context"
 	"slices"
+	"time"
 )
 
 type memoryRepository struct {
-	projects      map[domain.ProjectID]domain.Project
-	targets       map[domain.TargetID]domain.Target
-	plans         map[domain.PlanID]domain.ActionPlan
-	deployments   map[domain.TargetID]domain.DeploymentRecord
-	agentSessions map[domain.AgentSessionID]domain.AgentSession
-	agentEvents   map[domain.AgentSessionID][]domain.AgentEvent
-	databases     map[domain.DatabaseID]domain.DatabaseConnection
-	events        map[domain.PlanID][]domain.Event
-	gitOperations map[domain.GitOperationID]domain.GitOperation
-	gitEvents     map[domain.GitOperationID][]domain.GitEvent
-	aiProviders   map[domain.AIProviderID]domain.AIProvider
-	aiUsage       []domain.AIUsage
-	queryHistory  map[domain.DatabaseID][]domain.QueryHistory
-	policy        domain.Policy
-	hasPolicy     bool
-	audit         []domain.AuditEntry
-	workers       map[domain.WorkerID]domain.Worker
-	plugins       map[domain.PluginID]domain.Plugin
+	projects                     map[domain.ProjectID]domain.Project
+	targets                      map[domain.TargetID]domain.Target
+	plans                        map[domain.PlanID]domain.ActionPlan
+	deployments                  map[domain.TargetID]domain.DeploymentRecord
+	agentSessions                map[domain.AgentSessionID]domain.AgentSession
+	agentEvents                  map[domain.AgentSessionID][]domain.AgentEvent
+	databases                    map[domain.DatabaseID]domain.DatabaseConnection
+	events                       map[domain.PlanID][]domain.Event
+	gitOperations                map[domain.GitOperationID]domain.GitOperation
+	gitEvents                    map[domain.GitOperationID][]domain.GitEvent
+	aiProviders                  map[domain.AIProviderID]domain.AIProvider
+	aiUsage                      []domain.AIUsage
+	queryHistory                 map[domain.DatabaseID][]domain.QueryHistory
+	policy                       domain.Policy
+	hasPolicy                    bool
+	audit                        []domain.AuditEntry
+	auditDeleteAt                time.Time
+	workers                      map[domain.WorkerID]domain.Worker
+	plugins                      map[domain.PluginID]domain.Plugin
+	appendEventKind              domain.EventKind
+	appendEventErr               error
+	nextGitEventErr              error
+	rejectCanceledGitPersistence bool
 }
 
 func newMemoryRepository() *memoryRepository {
@@ -102,12 +109,25 @@ func (r *memoryRepository) GetPlan(_ context.Context, id domain.PlanID) (domain.
 }
 
 func (r *memoryRepository) ListPlans(_ context.Context, limit int) ([]domain.ActionPlan, error) {
-	plans := make([]domain.ActionPlan, 0, min(limit, len(r.plans)))
+	plans := make([]domain.ActionPlan, 0, len(r.plans))
 	for _, plan := range r.plans {
-		if len(plans) == limit {
-			break
-		}
 		plans = append(plans, plan)
+	}
+	slices.SortFunc(plans, func(left, right domain.ActionPlan) int {
+		if order := right.CreatedAt().Compare(left.CreatedAt()); order != 0 {
+			return order
+		}
+		return cmp.Compare(right.ID(), left.ID())
+	})
+	return slices.Clone(plans[:min(limit, len(plans))]), nil
+}
+
+func (r *memoryRepository) ListRunningPlans(_ context.Context) ([]domain.ActionPlan, error) {
+	plans := make([]domain.ActionPlan, 0)
+	for _, plan := range r.plans {
+		if plan.Status() == domain.PlanRunning {
+			plans = append(plans, plan)
+		}
 	}
 	return plans, nil
 }
@@ -145,12 +165,25 @@ func (r *memoryRepository) GetAgentSession(
 }
 
 func (r *memoryRepository) ListAgentSessions(_ context.Context, limit int) ([]domain.AgentSession, error) {
-	sessions := make([]domain.AgentSession, 0, min(limit, len(r.agentSessions)))
+	sessions := make([]domain.AgentSession, 0, len(r.agentSessions))
 	for _, session := range r.agentSessions {
-		if len(sessions) == limit {
-			break
-		}
 		sessions = append(sessions, session)
+	}
+	slices.SortFunc(sessions, func(left, right domain.AgentSession) int {
+		if order := right.CreatedAt().Compare(left.CreatedAt()); order != 0 {
+			return order
+		}
+		return cmp.Compare(right.ID(), left.ID())
+	})
+	return slices.Clone(sessions[:min(limit, len(sessions))]), nil
+}
+
+func (r *memoryRepository) ListRunningAgentSessions(_ context.Context) ([]domain.AgentSession, error) {
+	sessions := make([]domain.AgentSession, 0)
+	for _, session := range r.agentSessions {
+		if session.Status() == domain.AgentRunning {
+			sessions = append(sessions, session)
+		}
 	}
 	return sessions, nil
 }
@@ -195,6 +228,9 @@ func (r *memoryRepository) ListDatabaseConnections(_ context.Context) ([]domain.
 }
 
 func (r *memoryRepository) AppendEvent(_ context.Context, event domain.Event) error {
+	if event.Kind() == r.appendEventKind && r.appendEventErr != nil {
+		return r.appendEventErr
+	}
 	r.events[event.PlanID()] = append(r.events[event.PlanID()], event)
 	return nil
 }

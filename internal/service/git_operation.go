@@ -111,37 +111,37 @@ func (a *App) ExecuteGit(ctx context.Context, rawID string) (domain.GitOperation
 	if err := a.repository.SaveGitOperation(ctx, running); err != nil {
 		return domain.GitOperation{}, fmt.Errorf("save running git operation: %w", err)
 	}
-	output, runErr := a.git.Execute(ctx, project, running)
+	persistenceCtx := context.WithoutCancel(ctx)
+	var output string
+	runErr := a.policyAllowsGit(ctx, running.Kind())
+	if runErr == nil {
+		output, runErr = a.git.Execute(ctx, project, running)
+	}
+	var outputEventErr error
 	if clean := redact.Line(output); clean != "" {
-		if err := a.appendGitEvent(ctx, running.ID(), clean); err != nil {
-			return domain.GitOperation{}, err
-		}
+		outputEventErr = a.appendGitEvent(persistenceCtx, running.ID(), clean)
 	}
 	finished, err := running.Finish(runErr == nil)
 	if err != nil {
-		return domain.GitOperation{}, err
+		return domain.GitOperation{}, errors.Join(outputEventErr, err)
 	}
-	if err := a.repository.SaveGitOperation(ctx, finished); err != nil {
-		return domain.GitOperation{}, fmt.Errorf("save finished git operation: %w", err)
+	if err := a.repository.SaveGitOperation(persistenceCtx, finished); err != nil {
+		return domain.GitOperation{}, errors.Join(
+			outputEventErr, fmt.Errorf("save finished git operation: %w", err),
+		)
 	}
 	if runErr != nil {
-		auditErr := a.appendAudit(ctx, auditInput{
+		auditErr := a.appendAudit(persistenceCtx, auditInput{
 			category: domain.AuditGit, action: "execute", resourceID: string(finished.ID()),
 			outcome: domain.AuditFailure, message: "Git operation failed",
 		})
-		if err := a.appendGitEvent(ctx, finished.ID(), "git operation failed"); err != nil {
-			return finished, errors.Join(runErr, err, auditErr)
-		}
-		return finished, errors.Join(runErr, auditErr)
+		eventErr := a.appendGitEvent(persistenceCtx, finished.ID(), "git operation failed")
+		return finished, errors.Join(runErr, outputEventErr, eventErr, auditErr)
 	}
-	if err := a.appendGitEvent(ctx, finished.ID(), "git operation succeeded"); err != nil {
-		return domain.GitOperation{}, err
-	}
-	if err := a.appendAudit(ctx, auditInput{
+	eventErr := a.appendGitEvent(persistenceCtx, finished.ID(), "git operation succeeded")
+	auditErr := a.appendAudit(persistenceCtx, auditInput{
 		category: domain.AuditGit, action: "execute", resourceID: string(finished.ID()),
 		outcome: domain.AuditSuccess, message: "Git operation succeeded",
-	}); err != nil {
-		return domain.GitOperation{}, err
-	}
-	return finished, nil
+	})
+	return finished, errors.Join(outputEventErr, eventErr, auditErr)
 }

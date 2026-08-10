@@ -48,7 +48,7 @@ func (a *App) appendAudit(ctx context.Context, input auditInput) error {
 	if err := a.repository.AppendAudit(ctx, entry); err != nil {
 		return fmt.Errorf("append audit: %w", err)
 	}
-	return nil
+	return a.PruneAudit(ctx)
 }
 
 func (a *App) ListAudit(ctx context.Context, limit int) ([]domain.AuditEntry, error) {

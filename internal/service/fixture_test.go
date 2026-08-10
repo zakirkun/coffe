@@ -15,11 +15,26 @@ type fixture struct {
 	app      *service.App
 	repo     *memoryRepository
 	executor *recordingExecutor
+	git      *fixedGitTool
 	project  domain.Project
 	target   domain.Target
 }
 
 func newFixture(t *testing.T) fixture {
+	t.Helper()
+	return newFixtureWithWorkflow(t, domain.NewWorkflow(mustComposeFile(t), true))
+}
+
+func newFixtureWithWorkflow(t *testing.T, workflow domain.Workflow) fixture {
+	t.Helper()
+	return newFixtureWithRepository(t, workflow, func(repo *memoryRepository) service.Repository { return repo })
+}
+
+func newFixtureWithRepository(
+	t *testing.T,
+	workflow domain.Workflow,
+	wrap func(*memoryRepository) service.Repository,
+) fixture {
 	t.Helper()
 	now := time.Date(2026, 8, 7, 10, 0, 0, 0, time.UTC)
 	project := mustProject(t, now)
@@ -32,13 +47,14 @@ func newFixture(t *testing.T) fixture {
 		t.Fatalf("CreateTarget() error = %v", err)
 	}
 	executor := &recordingExecutor{started: make(chan struct{}), finished: make(chan struct{})}
+	git := &fixedGitTool{}
 	app := service.New(service.Dependencies{
-		Logger: slog.New(slog.DiscardHandler), Repository: repo,
-		Workflows: fixedWorkflowLoader{workflow: domain.NewWorkflow(mustComposeFile(t), true)},
+		Logger: slog.New(slog.DiscardHandler), Repository: wrap(repo),
+		Workflows: fixedWorkflowLoader{workflow: workflow},
 		Planner:   fixedPlanner{intent: domain.IntentDeploy}, Executor: executor,
 		Renderer: fixedRenderer{}, Swarm: fixedSwarmReader{}, Agents: successfulAgentRunner{},
 		Databases: fixedDatabaseReader{}, Secrets: fixedSecretReader{},
-		Git:      fixedGitTool{},
+		Git:      git,
 		AIModels: fixedAIModelCatalog{},
 		Workers:  fixedWorkerProbe{},
 		Plugins:  fixedPluginRunner{},
@@ -47,7 +63,7 @@ func newFixture(t *testing.T) fixture {
 	if err := app.EnsureDefaultPolicy(context.Background()); err != nil {
 		t.Fatalf("EnsureDefaultPolicy() error = %v", err)
 	}
-	return fixture{app: app, repo: repo, executor: executor, project: project, target: target}
+	return fixture{app: app, repo: repo, executor: executor, git: git, project: project, target: target}
 }
 
 func (f fixture) preview(t *testing.T) domain.ActionPlan {

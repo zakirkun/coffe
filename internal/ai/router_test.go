@@ -7,8 +7,11 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 	"time"
+
+	coffesqlite "coffe/internal/store/sqlite"
 )
 
 func Test_Router_falls_back_and_records_each_attempt(t *testing.T) {
@@ -39,6 +42,47 @@ func Test_Router_falls_back_and_records_each_attempt(t *testing.T) {
 	}
 	if intent != domain.IntentDeploy || len(store.usage) != 2 || !store.usage[1].Success() {
 		t.Fatalf("intent/usage = %q/%d/%v", intent, len(store.usage), store.usage)
+	}
+}
+
+func Test_Router_records_usage_with_real_SQLite_provider_constraint(t *testing.T) {
+	// Given
+	ctx := context.Background()
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		writer.Header().Set("Content-Type", "application/json")
+		_, _ = writer.Write([]byte(`{"choices":[{"message":{"content":"{\"action\":\"deploy\"}"}}],"usage":{"prompt_tokens":4,"completion_tokens":2,"total_tokens":6}}`))
+	}))
+	t.Cleanup(server.Close)
+	store, err := coffesqlite.Open(ctx, filepath.Join(t.TempDir(), "coffe.db"))
+	if err != nil {
+		t.Fatalf("Open() error = %v", err)
+	}
+	t.Cleanup(func() {
+		if closeErr := store.Close(); closeErr != nil {
+			t.Errorf("Close() error = %v", closeErr)
+		}
+	})
+	configured := provider(t, "configured-fallback", server.URL, 1)
+	if err := store.SaveAIProvider(ctx, configured); err != nil {
+		t.Fatalf("SaveAIProvider() error = %v", err)
+	}
+	router := ai.NewRouter(ai.RouterDependencies{
+		Store: store, Secrets: emptySecretReader{}, IDs: &providerIDs{}, Clock: providerClock{},
+	})
+
+	// When
+	intent, err := router.Classify(ctx, "deploy")
+	if err != nil {
+		t.Fatalf("Classify() error = %v", err)
+	}
+	usage, err := store.ListAIUsage(ctx, 10)
+
+	// Then
+	if err != nil {
+		t.Fatalf("ListAIUsage() error = %v", err)
+	}
+	if intent != domain.IntentDeploy || len(usage) != 1 || usage[0].ProviderID() != configured.ID() {
+		t.Fatalf("intent/usage = %q/%v", intent, usage)
 	}
 }
 

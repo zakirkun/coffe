@@ -89,14 +89,11 @@ func (a *App) appendAgentEvent(
 }
 
 func (a *App) RecoverAgentSessions(ctx context.Context) error {
-	sessions, err := a.repository.ListAgentSessions(ctx, 100)
+	sessions, err := a.repository.ListRunningAgentSessions(ctx)
 	if err != nil {
 		return fmt.Errorf("list interrupted agents: %w", err)
 	}
 	for _, session := range sessions {
-		if session.Status() != domain.AgentRunning {
-			continue
-		}
 		failed, err := session.Finish(false, a.clock.Now())
 		if err != nil {
 			return err

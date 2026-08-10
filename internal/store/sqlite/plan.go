@@ -76,6 +76,27 @@ func (s *Store) ListPlans(ctx context.Context, limit int) (plans []domain.Action
 	return plans, nil
 }
 
+func (s *Store) ListRunningPlans(ctx context.Context) (plans []domain.ActionPlan, err error) {
+	const query = `SELECT id, project_id, target_id, source_plan_id, kind, status, revision, steps_json, created_at, approved_at
+		FROM plans WHERE status = ? ORDER BY created_at DESC, id DESC`
+	rows, err := s.db.QueryContext(ctx, query, domain.PlanRunning)
+	if err != nil {
+		return nil, fmt.Errorf("query running plans: %w", err)
+	}
+	defer func() { err = errors.Join(err, rows.Close()) }()
+	for rows.Next() {
+		plan, err := scanPlan(rows)
+		if err != nil {
+			return nil, err
+		}
+		plans = append(plans, plan)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate running plans: %w", err)
+	}
+	return plans, nil
+}
+
 func scanPlan(row rowScanner) (domain.ActionPlan, error) {
 	var id, projectID, targetID, rawKind, rawStatus, rawSteps, rawCreatedAt string
 	var rawSourceID, rawRevision, rawApprovedAt sql.NullString

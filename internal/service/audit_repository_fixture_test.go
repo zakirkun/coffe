@@ -17,6 +17,7 @@ func (r *memoryRepository) ListAudit(_ context.Context, limit int) ([]domain.Aud
 }
 
 func (r *memoryRepository) DeleteAuditBefore(_ context.Context, before time.Time) error {
+	r.auditDeleteAt = before
 	kept := r.audit[:0]
 	for _, entry := range r.audit {
 		if !entry.OccurredAt().Before(before) {

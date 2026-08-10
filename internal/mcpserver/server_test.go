@@ -122,6 +122,8 @@ func (emptyApplication) GitStatus(context.Context, string) (domain.GitStatus, er
 	return domain.GitStatus{}, nil
 }
 
+func (emptyApplication) GitBranches(context.Context, string) ([]string, error) { return nil, nil }
+
 func (emptyApplication) GitDiff(context.Context, string) (string, error) { return "", nil }
 
 func (emptyApplication) PreviewGit(
@@ -154,3 +156,5 @@ func (emptyApplication) ListAudit(context.Context, int) ([]domain.AuditEntry, er
 func (emptyApplication) ListWorkers(context.Context) ([]domain.Worker, error) { return nil, nil }
 
 func (emptyApplication) ListPlugins(context.Context) ([]domain.Plugin, error) { return nil, nil }
+
+func (emptyApplication) ListEvents(context.Context, string) ([]domain.Event, error) { return nil, nil }

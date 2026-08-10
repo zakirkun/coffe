@@ -30,6 +30,11 @@ func (a *App) runStartedPlan(
 		if err := a.appendEvent(ctx, plan.ID(), domain.EventStepStarted, string(step)+" started"); err != nil {
 			return a.failPlan(ctx, plan, err)
 		}
+		if step == domain.StepSwarmDeploy {
+			if err := a.policyAllowsSwarm(ctx); err != nil {
+				return a.failPlan(ctx, plan, err)
+			}
+		}
 		result, err := a.executor.Execute(ctx, ExecutionStep{
 			Plan: plan, Target: target, Workflow: workflow, Step: step,
 			Output: func(line string) error {

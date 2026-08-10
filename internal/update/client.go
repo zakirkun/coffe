@@ -57,7 +57,21 @@ func NewClient(config ClientConfig) (*Client, error) {
 	if client == nil {
 		client = &http.Client{Timeout: 30 * time.Second}
 	}
-	return &Client{manifestURL: manifestURL, httpClient: client}, nil
+	clonedClient := *client
+	callerRedirect := clonedClient.CheckRedirect
+	clonedClient.CheckRedirect = func(request *http.Request, via []*http.Request) error {
+		if _, err := parseHTTPSURL(request.URL.String()); err != nil {
+			return err
+		}
+		if callerRedirect != nil {
+			return callerRedirect(request, via)
+		}
+		if len(via) >= 10 {
+			return errors.New("stopped after 10 redirects")
+		}
+		return nil
+	}
+	return &Client{manifestURL: manifestURL, httpClient: &clonedClient}, nil
 }
 
 func (c *Client) Check(ctx context.Context, currentVersion string) (release Release, err error) {

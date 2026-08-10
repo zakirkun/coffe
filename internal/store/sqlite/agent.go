@@ -64,6 +64,27 @@ func (s *Store) ListAgentSessions(ctx context.Context, limit int) (sessions []do
 	return sessions, nil
 }
 
+func (s *Store) ListRunningAgentSessions(ctx context.Context) (sessions []domain.AgentSession, err error) {
+	const query = `SELECT id, project_id, tool, status, created_at, started_at, finished_at
+		FROM agent_sessions WHERE status = ? ORDER BY created_at DESC, id DESC`
+	rows, err := s.db.QueryContext(ctx, query, domain.AgentRunning)
+	if err != nil {
+		return nil, fmt.Errorf("query running agent sessions: %w", err)
+	}
+	defer func() { err = errors.Join(err, rows.Close()) }()
+	for rows.Next() {
+		session, err := scanAgentSession(rows)
+		if err != nil {
+			return nil, err
+		}
+		sessions = append(sessions, session)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate running agent sessions: %w", err)
+	}
+	return sessions, nil
+}
+
 func (s *Store) AppendAgentEvent(ctx context.Context, event domain.AgentEvent) error {
 	const query = `INSERT INTO agent_events (session_id, message, occurred_at) VALUES (?, ?, ?)`
 	if _, err := s.db.ExecContext(

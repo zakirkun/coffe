@@ -18,11 +18,13 @@ type Repository interface {
 	SavePlan(context.Context, domain.ActionPlan) error
 	GetPlan(context.Context, domain.PlanID) (domain.ActionPlan, error)
 	ListPlans(context.Context, int) ([]domain.ActionPlan, error)
+	ListRunningPlans(context.Context) ([]domain.ActionPlan, error)
 	SaveDeployment(context.Context, domain.DeploymentRecord) error
 	LatestDeployment(context.Context, domain.TargetID) (domain.DeploymentRecord, error)
 	SaveAgentSession(context.Context, domain.AgentSession) error
 	GetAgentSession(context.Context, domain.AgentSessionID) (domain.AgentSession, error)
 	ListAgentSessions(context.Context, int) ([]domain.AgentSession, error)
+	ListRunningAgentSessions(context.Context) ([]domain.AgentSession, error)
 	AppendAgentEvent(context.Context, domain.AgentEvent) error
 	ListAgentEvents(context.Context, domain.AgentSessionID) ([]domain.AgentEvent, error)
 	CreateDatabaseConnection(context.Context, domain.DatabaseConnection) error

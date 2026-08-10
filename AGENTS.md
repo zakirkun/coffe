@@ -5,7 +5,9 @@ Go 1.24.2+ local-first deployment control plane.
 ## Commands
 - `go test -race -shuffle=on -count=1 ./...` - run tests
 - `go build ./cmd/coffe` - build the binary
-- `go run ./cmd/coffe tui` - open the dashboard
+- `go run github.com/wailsapp/wails/v2/cmd/wails@v2.12.0 dev -dir desktop` - open the desktop dashboard
+- `go run github.com/wailsapp/wails/v2/cmd/wails@v2.12.0 build -clean -dir desktop` - build the native desktop app
+- `bun --cwd desktop/frontend run check` - lint the desktop frontend
 - `go run ./cmd/coffe serve` - run HTTP and MCP endpoints
 - `go run ./cmd/coffe mcp` - run MCP over stdio
 
@@ -22,7 +24,8 @@ Go 1.24.2+ local-first deployment control plane.
 - `internal/update` owns HTTPS manifest checks and checksum-verified staging.
 - `internal/worker` owns authenticated remote task protocol and SSH fallback routing.
 - `internal/pluginexec` owns hash-pinned JSON-stdio plugin execution.
-- `internal/httpapi`, `internal/mcpserver`, and `internal/tui` are adapters.
+- `internal/httpapi`, `internal/mcpserver`, and `internal/desktop` are adapters.
+- `desktop` owns the Wails native shell and React/TypeScript operator dashboard.
 
 ## Conventions
 - AI output never becomes shell input.

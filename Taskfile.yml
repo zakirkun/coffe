@@ -11,8 +11,23 @@ tasks:
   build:
     cmds:
       - go build ./cmd/coffe
+  frontend:
+    dir: desktop/frontend
+    cmds:
+      - bun install --frozen-lockfile
+      - bun test
+      - bun run check
+      - bun run build
+  desktop:dev:
+    dir: desktop
+    cmds:
+      - go run github.com/wailsapp/wails/v2/cmd/wails@v2.12.0 dev
+  desktop:build:
+    dir: desktop
+    cmds:
+      - go run github.com/wailsapp/wails/v2/cmd/wails@v2.12.0 build -clean
   release:snapshot:
     cmds:
       - goreleaser release --snapshot --clean
   ci:
-    deps: [test, build]
+    deps: [test, build, frontend]

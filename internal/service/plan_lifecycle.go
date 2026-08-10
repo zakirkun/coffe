@@ -86,14 +86,11 @@ func (a *App) PreviewRollback(ctx context.Context, rawTargetID string) (domain.A
 }
 
 func (a *App) RecoverInterruptedPlans(ctx context.Context) error {
-	plans, err := a.repository.ListPlans(ctx, 100)
+	plans, err := a.repository.ListRunningPlans(ctx)
 	if err != nil {
 		return fmt.Errorf("list interrupted plans: %w", err)
 	}
 	for _, plan := range plans {
-		if plan.Status() != domain.PlanRunning {
-			continue
-		}
 		failed, err := plan.Finish(false)
 		if err != nil {
 			return err

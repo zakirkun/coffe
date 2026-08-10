@@ -1,5 +1,5 @@
 coffe
-coffe.exe
+*.exe
 *.db
 *.db-shm
 *.db-wal
@@ -8,3 +8,8 @@ coverage.out
 bin/
 dist/
 .omo/
+desktop/build/
+desktop/frontend/node_modules/
+desktop/frontend/dist/
+desktop/frontend/wailsjs/
+.playwright-mcp/

@@ -15,6 +15,7 @@ type Application interface {
 	PreviewDeploy(context.Context, service.PreviewInput) (domain.ActionPlan, error)
 	PlanPreview(context.Context, string) (service.Preview, error)
 	GetPlan(context.Context, string) (domain.ActionPlan, error)
+	ListEvents(context.Context, string) ([]domain.Event, error)
 	ListSwarmNodes(context.Context, string) ([]domain.SwarmNode, error)
 	ListSwarmServices(context.Context, string) ([]domain.SwarmService, error)
 	ListAgentSessions(context.Context, int) ([]domain.AgentSession, error)
@@ -27,6 +28,7 @@ type Application interface {
 	ExplainDatabase(context.Context, string, string) (domain.QueryResult, error)
 	ListQueryHistory(context.Context, string, int) ([]domain.QueryHistory, error)
 	GitStatus(context.Context, string) (domain.GitStatus, error)
+	GitBranches(context.Context, string) ([]string, error)
 	GitDiff(context.Context, string) (string, error)
 	PreviewGit(context.Context, service.CreateGitOperationInput) (service.GitPreview, error)
 	ListGitOperations(context.Context, int) ([]domain.GitOperation, error)
@@ -53,6 +55,9 @@ func New(app Application) *mcp.Server {
 	mcp.AddTool(server, &mcp.Tool{
 		Name: "get_plan", Description: "Read one deployment plan and its current status",
 	}, getPlanHandler(app))
+	mcp.AddTool(server, &mcp.Tool{
+		Name: "list_plan_events", Description: "List recorded events for one deployment plan",
+	}, listPlanEventsHandler(app))
 	registerSwarmTools(server, app)
 	registerAgentTools(server, app)
 	registerDatabaseTools(server, app)

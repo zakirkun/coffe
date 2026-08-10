@@ -26,12 +26,15 @@ func Test_Root_help_lists_runtime_surfaces(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 	for _, commandName := range []string{
-		"tui", "serve", "mcp", "project", "target", "database", "git", "ai", "secret",
+		"serve", "mcp", "project", "target", "database", "git", "ai", "secret",
 		"backup", "update", "version", "policy", "audit",
 		"worker", "plugin",
 	} {
 		if !strings.Contains(output.String(), commandName) {
 			t.Fatalf("help missing %q:\n%s", commandName, output.String())
 		}
+	}
+	if strings.Contains(output.String(), "\n  tui ") {
+		t.Fatalf("help still lists removed tui surface:\n%s", output.String())
 	}
 }
